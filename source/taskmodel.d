@@ -20,6 +20,11 @@ class Task {
         this.id = -1;
     } // required for registertype
 
+    this(uint parentId) {
+        this.id = -1;
+        this.parentId = parentId;
+    }
+
     this(string description) {
         this(-1, description, Nullable!uint.init);
     }
@@ -51,6 +56,18 @@ public:
     ~this() {
     }
 
+    public void addTask(Task task, uint parentId = 0) {
+        beginResetModel();
+        // add the task to the database
+        db.execute("INSERT INTO Task (Name, ParentId) VALUES (:name, :parentid);", task.description, task.parentId);
+
+        task.parentId = parentId;
+        // update the model
+        content ~= task;
+
+        endResetModel();
+    }
+
     private void fetchData() {
 
         auto count = db.execute("SELECT count(*) FROM Task;").oneValue!uint;
@@ -78,13 +95,15 @@ public:
 
     // return the number of rows for the parent
     extern (C++) override int rowCount(ref const(QModelIndex) parent = globalInitVar!QModelIndex) const {
-        
+
         if (!parent.isValid())
-            return content.count!(e => e.parentId.isNull).to!int;
+            return content.count!(e => e.parentId.isNull)
+                .to!int;
 
         const(Task) parentItem = content.find!(e => e.id == parent.internalId)[0];
 
-        int rc =  content.count!(e => e.parentId == parentItem.id).to!int;
+        int rc = content.count!(e => e.parentId == parentItem.id)
+            .to!int;
         // writeln("Getting row count for parent: ", parent.row(), ": ", rc);
         return rc;
     }
@@ -97,7 +116,7 @@ public:
         if (role != qt.core.namespace.ItemDataRole.DisplayRole)
             return QVariant();
 
-        return QVariant(QString(content.find!(e=>e.id == index.internalId)[0].description));
+        return QVariant(QString(content.find!(e => e.id == index.internalId)[0].description));
     }
 
     extern (C++) override qt.core.namespace.ItemFlags flags(ref const(QModelIndex) index) const {
@@ -127,19 +146,22 @@ public:
             return QModelIndex();
 
         // writeln("Creating index for row: ", row);
-        
+
         import std.range;
+
         if (parent.isValid()) {
             // first get the parent item
-            const(Task) parentItem =  content.find!(e =>e.id == parent.internalId)[0];
+            const(Task) parentItem = content.find!(e => e.id == parent.internalId)[0];
             // get the child items
             // does this the parent have a child at this row?
             auto childItems = content.filter!(e => e.parentId == parentItem.id);
             if (row < childItems.count) {
                 return createIndex(row, column, childItems.drop(row).front().id);
             }
-        } else {
-            return createIndex(row,column,content.filter!(e =>e.parentId.isNull).drop(row).front().id);
+        }
+        else {
+            return createIndex(row, column, content.filter!(e => e.parentId.isNull)
+                    .drop(row).front().id);
         }
 
         return QModelIndex();
@@ -153,23 +175,25 @@ public:
         // writeln("Finding parent for id: ", index.internalId);
 
         // find the child item
-        const(Task) childItem = content.find!(e =>e.id == index.internalId)[0];
+        const(Task) childItem = content.find!(e => e.id == index.internalId)[0];
 
         // The child is a top level item
         if (childItem.parentId.isNull)
             return QModelIndex();
 
         // Get the parent item for this child
-        const(Task) parentItem = content.find!(e =>e.id == childItem.parentId)[0];
+        const(Task) parentItem = content.find!(e => e.id == childItem.parentId)[0];
 
         // get the row number of the parent in its parent
         if (parentItem.parentId.isNull) {
             auto items = content.filter!(e => e.parentId.isNull);
-            return createIndex(items.countUntil!(e=>e.id == parentItem.id).to!int, 0, parentItem.id);
+            return createIndex(items.countUntil!(e => e.id == parentItem.id)
+                    .to!int, 0, parentItem.id);
         }
         else {
             int itemNo = content.filter!(e => e.id == childItem.parentId)
-                    .countUntil!(e=>e.id == parentItem.id).to!int;
+                .countUntil!(e => e.id == parentItem.id)
+                .to!int;
             return createIndex(itemNo, 0, parentItem.id);
         }
 

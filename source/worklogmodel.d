@@ -21,11 +21,6 @@ class WorkLog {
         this.id = -1;
     } // required for registertype
 
-    this(uint taskId) {
-        this.id = -1;
-        this.taskId = taskId;
-    }
-    
     this(uint id, uint taskId, string title, uint minutes, string date) {
         this.id = id;
         this.taskId = taskId;
@@ -87,15 +82,11 @@ class WorkLogModel : QAbstractItemModel {
         endResetModel();
     }
 
-    public void addWorkLog(WorkLog workLog) {
+    public void addWorkLog(WorkLog workLog, uint taskId) {
         beginResetModel();
         writeln("Adding worklog");
-        Statement stmt = db.prepare("INSERT INTO WorkLog (Title, Minutes, Date, TaskId) VALUES (:title, :minutes, :date, :taskid);");
-        stmt.bind(":taskid", workLog.taskId);
-        stmt.bind(":title", workLog.title);
-        stmt.bind(":minutes", workLog.minutes);
-        stmt.bind(":date", workLog.date);
-        stmt.execute();
+        db.execute("INSERT INTO WorkLog (Title, Minutes, Date, TaskId) VALUES (:title, :minutes, :date, :taskid);",
+            workLog.title, workLog.minutes, workLog.date, taskId);
 
         writeln("Changes made: ", db.changes);
         writeln("Error: ", db.errorCode);
@@ -104,7 +95,7 @@ class WorkLogModel : QAbstractItemModel {
         workLog.title = workLog.title;
         workLog.minutes = workLog.minutes;
         workLog.date = workLog.date;
-        workLog.taskId = workLog.taskId;
+        workLog.taskId = taskId;
         content ~= workLog;
 
         endResetModel();
@@ -112,16 +103,11 @@ class WorkLogModel : QAbstractItemModel {
 
     private void fetchData(uint taskId) {
 
-        Statement stmtCount = db.prepare("SELECT count(*) FROM WorkLog WHERE taskId = :taskId;");
-        stmtCount.bind(":taskId", taskId);
-        auto count = stmtCount.execute().oneValue!uint;
+        uint count = db.execute("SELECT count(*) FROM WorkLog WHERE taskId = :taskId;", taskId).oneValue!uint;
         content = new WorkLog[count];
 
-        Statement stmtData = db.prepare(
-            "SELECT Id, Title, Minutes, TaskId, Date FROM WorkLog WHERE taskId = :taskId;");
-        stmtData.bind(":taskId", taskId);
-
-        auto results = stmtData.execute();
+        auto results = db.execute(
+            "SELECT Id, Title, Minutes, TaskId, Date FROM WorkLog WHERE taskId = :taskId;", taskId);
         int i = 0;
         foreach (Row row; results) {
             writeln("Adding worklog");

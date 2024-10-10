@@ -32,7 +32,7 @@ class EditWorkLogDialog : QDialog {
 
         ui.setupUi(this);
 
-        ui.dteStartDate.setDateTime(QDateTime.currentDateTime);
+        ui.dteStartDate.setDateTime(QDateTime.currentDateTime); 
 
         connect(this.signal!("accepted"), this.slot!("onAccepted"));
 

@@ -67,6 +67,9 @@
    <property name="suffix">
     <string>min</string>
    </property>
+   <property name="minimum">
+    <number>5</number>
+   </property>
    <property name="maximum">
     <number>480</number>
    </property>
