@@ -3,6 +3,8 @@ module worklogmodel;
 import std.stdio;
 import std.conv;
 import std.format;
+import std.array;
+import std.algorithm;
 import std.algorithm.searching;
 
 import qt.helpers;
@@ -43,7 +45,6 @@ class WorkLogModel : QAbstractItemModel {
     this(Database db) {
         this.db = db;
 
-        //content = [QString("John"),QString("Mary"),QString("Susan"),QString("Peter"),QString("William")];
         headerNames = [QString("Title"), QString("Time"), QString("Date")];
     }
 
@@ -98,6 +99,18 @@ class WorkLogModel : QAbstractItemModel {
         workLog.taskId = taskId;
         content ~= workLog;
 
+        endResetModel();
+    }
+
+    public void deleteWorkLog(WorkLog workLog) {
+        beginResetModel();
+        writeln("Deleting worklog: ", workLog.id);
+        db.execute("DELETE FROM WorkLog WHERE Id = :id;", workLog.id);
+
+        writeln("Changes made: ", db.changes);
+        writeln("Error: ", db.errorCode);
+
+        content = content.filter!(e => e.id != workLog.id).array;
         endResetModel();
     }
 

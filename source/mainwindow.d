@@ -54,6 +54,10 @@ class MainWindow : QMainWindow {
         connect(editAction.signal!("triggered"), this.slot!("onEditWorkLogClicked"));
         workLogContextMenu.addAction(editAction);
 
+        QAction deleteAction = new QAction(QString("Delete"), this);
+        connect(deleteAction.signal!("triggered"), this.slot!("onDeleteWorkLogClicked"));
+        workLogContextMenu.addAction(deleteAction);
+
         // task model context menu
         taskContextMenu = new QMenu(this);
         QAction addTaskAction = new QAction(QString("Add Task"), this);
@@ -146,6 +150,12 @@ class MainWindow : QMainWindow {
         if (dialog.result() == QDialog.DialogCode.Accepted) {
             workLogModel.addWorkLog(workLog, taskId);
         }
+    }
+
+    @QSlot public void onDeleteWorkLogClicked() {
+        writeln("Delete");
+        WorkLog workLog = workLogModel.at(index.row);
+        workLogModel.deleteWorkLog(workLog);
     }
 
 private:

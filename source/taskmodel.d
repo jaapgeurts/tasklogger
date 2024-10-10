@@ -59,7 +59,7 @@ public:
     public void addTask(Task task, uint parentId = 0) {
         beginResetModel();
         // add the task to the database
-        db.execute("INSERT INTO Task (Name, ParentId) VALUES (:name, :parentid);", task.description, task.parentId);
+        db.execute("INSERT INTO Task (Description, ParentId) VALUES (:description, :parentid);", task.description, parentId);
 
         task.parentId = parentId;
         // update the model
@@ -73,13 +73,13 @@ public:
         auto count = db.execute("SELECT count(*) FROM Task;").oneValue!uint;
         content = new Task[count];
 
-        auto results = db.execute("SELECT Id, Name, ParentId FROM Task;");
+        auto results = db.execute("SELECT Id, Description, ParentId FROM Task;");
 
         int i = 0;
         foreach (Row row; results) {
             writeln("Adding task");
 
-            content[i] = new Task(row["Id"].as!uint, row["Name"].as!string, row["ParentId"].as!(
+            content[i] = new Task(row["Id"].as!uint, row["Description"].as!string, row["ParentId"].as!(
                     Nullable!uint));
             i++;
         }
