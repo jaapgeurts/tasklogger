@@ -6,6 +6,7 @@ import std.conv;
 import core.stdcpp.new_;
 import qt.core.object;
 import qt.core.string;
+import qt.core.point;
 import qt.core.variant;
 import qt.helpers;
 
@@ -57,7 +58,6 @@ class MainWindow : QMainWindow {
 
         workLogModel = new WorkLogModel(db);
         ui.workLogTableView.setModel(workLogModel);
-        //ui.workLogTableView.setContextMenuPolicy(qt.ContextMenuPolicy.CustomContextMenu);
         connect(ui.workLogTableView.signal!("customContextMenuRequested"), 
             this.slot!("onWorkLogContextMenuRequested"));
 
@@ -71,21 +71,40 @@ class MainWindow : QMainWindow {
     }
 
     @QSlot public void onCurrentTaskChanged(ref const(QModelIndex) current,ref const(QModelIndex) previous) {
-        workLogModel.setTask(current.internalId.to!uint);
+        taskId = current.internalId.to!uint;
+        workLogModel.setTask(taskId);
     }
 
     @QSlot public void onAddWorkLogClicked() {
         auto dialog = new EditWorkLogDialog(this); 
-        dialog.setWorkLogItem(new WorkLog());
+        WorkLog workLog = new WorkLog(taskId);
+        dialog.setWorkLogItem(workLog);
         dialog.exec();
+        if (dialog.result() == QDialog.DialogCode.Accepted) {
+            workLogModel.addWorkLog(workLog);
+        }
     }
 
-    @QSlot public void onWorkLogContextMenuRequested() {
+    // TODO: change to local variable
+    QModelIndex index;
+
+    @QSlot public void onWorkLogContextMenuRequested(ref const QPoint pos) {
         writeln("Context menu requested");
+        index = ui.workLogTableView.indexAt(pos);
+        if (index.isValid()) {
+            workLogContextMenu.exec(ui.workLogTableView.mapToGlobal(pos));
+        }
     }
 
     @QSlot public void onEditWorkLogClicked() {
         writeln("Edit");
+        WorkLog workLog = workLogModel.at(index.row);
+        auto dialog = new EditWorkLogDialog(this);
+        dialog.setWorkLogItem(workLog);
+        dialog.exec();
+        if (dialog.result() == QDialog.DialogCode.Accepted) {
+            workLogModel.updateWorkLog(workLog);
+        }
     }
 
 private:
@@ -95,6 +114,8 @@ private:
     WorkLogModel workLogModel;
 
     QMenu workLogContextMenu;
+
+    uint taskId;
 
     Database db;
 

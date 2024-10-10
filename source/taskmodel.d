@@ -85,7 +85,7 @@ public:
         const(Task) parentItem = content.find!(e => e.id == parent.internalId)[0];
 
         int rc =  content.count!(e => e.parentId == parentItem.id).to!int;
-        writeln("Getting row count for parent: ", parent.row(), ": ", rc);
+        // writeln("Getting row count for parent: ", parent.row(), ": ", rc);
         return rc;
     }
 
@@ -126,7 +126,7 @@ public:
         if (!hasIndex(row, column, parent))
             return QModelIndex();
 
-        writeln("Creating index for row: ", row);
+        // writeln("Creating index for row: ", row);
         
         import std.range;
         if (parent.isValid()) {
@@ -150,7 +150,7 @@ public:
         if (!index.isValid())
             return QModelIndex();
 
-        writeln("Finding parent for id: ", index.internalId);
+        // writeln("Finding parent for id: ", index.internalId);
 
         // find the child item
         const(Task) childItem = content.find!(e =>e.id == index.internalId)[0];

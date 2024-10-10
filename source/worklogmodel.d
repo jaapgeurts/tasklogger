@@ -3,6 +3,7 @@ module worklogmodel;
 import std.stdio;
 import std.conv;
 import std.format;
+import std.algorithm.searching;
 
 import qt.helpers;
 import qt.core.namespace;
@@ -20,6 +21,11 @@ class WorkLog {
         this.id = -1;
     } // required for registertype
 
+    this(uint taskId) {
+        this.id = -1;
+        this.taskId = taskId;
+    }
+    
     this(uint id, uint taskId, string title, uint minutes, string date) {
         this.id = id;
         this.taskId = taskId;
@@ -39,8 +45,6 @@ class WorkLog {
 
 class WorkLogModel : QAbstractItemModel {
 
-public:
-
     this(Database db) {
         this.db = db;
 
@@ -56,6 +60,55 @@ public:
         fetchData(taskId);
         endResetModel();
     } 
+
+    public WorkLog at(int index) {
+        return content[index];
+    }
+
+    public void updateWorkLog(WorkLog workLog) {
+        beginResetModel();
+        writeln("Updating worklog: ", workLog.id);
+        Statement stmt = db.prepare("UPDATE WorkLog SET Title = :title, Minutes = :minutes, Date = :date, TaskId = :taskid WHERE Id = :id;");
+        stmt.bind(":id", workLog.id);
+        stmt.bind(":taskid", workLog.taskId);
+        stmt.bind(":title", workLog.title);
+        stmt.bind(":minutes", workLog.minutes);
+        stmt.bind(":date", workLog.date);
+        stmt.execute();
+
+        writeln("Changes made: ", db.changes);
+        writeln("Error: ", db.errorCode);
+
+        WorkLog item = content.find!(e => e.id == workLog.id)[0];
+        item.title = workLog.title;
+        item.minutes = workLog.minutes;
+        item.date = workLog.date;
+        item.taskId = workLog.taskId;
+        endResetModel();
+    }
+
+    public void addWorkLog(WorkLog workLog) {
+        beginResetModel();
+        writeln("Adding worklog");
+        Statement stmt = db.prepare("INSERT INTO WorkLog (Title, Minutes, Date, TaskId) VALUES (:title, :minutes, :date, :taskid);");
+        stmt.bind(":taskid", workLog.taskId);
+        stmt.bind(":title", workLog.title);
+        stmt.bind(":minutes", workLog.minutes);
+        stmt.bind(":date", workLog.date);
+        stmt.execute();
+
+        writeln("Changes made: ", db.changes);
+        writeln("Error: ", db.errorCode);
+
+        workLog.id = db.lastInsertRowid.to!uint;
+        workLog.title = workLog.title;
+        workLog.minutes = workLog.minutes;
+        workLog.date = workLog.date;
+        workLog.taskId = workLog.taskId;
+        content ~= workLog;
+
+        endResetModel();
+    }
 
     private void fetchData(uint taskId) {
 

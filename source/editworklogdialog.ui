@@ -42,7 +42,7 @@
     </rect>
    </property>
   </widget>
-  <widget class="QDateTimeEdit" name="dateTimeEdit">
+  <widget class="QDateTimeEdit" name="dteStartDate">
    <property name="geometry">
     <rect>
      <x>140</x>
@@ -51,8 +51,11 @@
      <height>32</height>
     </rect>
    </property>
+   <property name="calendarPopup">
+    <bool>true</bool>
+   </property>
   </widget>
-  <widget class="QSpinBox" name="spinBox">
+  <widget class="QSpinBox" name="spMinutes">
    <property name="geometry">
     <rect>
      <x>140</x>
@@ -60,6 +63,12 @@
      <width>81</width>
      <height>32</height>
     </rect>
+   </property>
+   <property name="suffix">
+    <string>min</string>
+   </property>
+   <property name="maximum">
+    <number>480</number>
    </property>
   </widget>
   <widget class="QLabel" name="label">
