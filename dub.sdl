@@ -1,0 +1,8 @@
+name "tasklogger"
+description "A simple applicaton to log and track your hours"
+authors "Jaap Geurts"
+copyright "Copyright © 2024, Jaap Geurts"
+license "GPL-3.0-or-later"
+dflags "-J source"
+dependency "d2sqlite3" version="~>1.0.0"
+dependency "dqt" version=">=5.15.2-alpha.2 <5.16.0-0"
