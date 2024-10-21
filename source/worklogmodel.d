@@ -188,7 +188,7 @@ class WorkLogModel : QAbstractItemModel {
         if (parent.isValid())
             return QModelIndex();
 
-        return createIndex(row, column, null);
+        return createIndex(row, column, cast(void*)content[row]);
     }
 
     extern (C++) override QModelIndex parent(ref const(QModelIndex) index) const {

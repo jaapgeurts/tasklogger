@@ -5,6 +5,7 @@ import std.typecons;
 import std.algorithm.searching;
 import std.algorithm.iteration;
 import std.conv;
+import std.array;
 
 import qt.helpers;
 import qt.core.namespace;
@@ -13,6 +14,8 @@ import qt.core.string;
 import qt.core.variant;
 
 import d2sqlite3;
+
+import worklogmodel;
 
 class Task {
 
@@ -37,8 +40,12 @@ class Task {
 
     uint id;
     Nullable!uint parentId;
-
     string description;
+
+    uint minutes;
+
+    private Task parent;
+    private Task[] children;
 
 }
 
@@ -49,63 +56,87 @@ public:
     this(Database db) {
         this.db = db;
 
-        fetchData();
+        loadData();
 
     }
 
     ~this() {
     }
 
-    public void addTask(Task task, uint parentId = 0) {
+    public void addTask(Task parent, Task task) {
+
         beginResetModel();
         // add the task to the database
-        db.execute("INSERT INTO Task (Description, ParentId) VALUES (:description, :parentid);", task.description, parentId);
+        db.execute("INSERT INTO Task (Description, ParentId) VALUES (:description, :parentid);", task.description, parent
+                .id);
 
-        task.parentId = parentId;
+        task.parentId = parent.id;
+        task.id = db.lastInsertRowid.to!uint;
         // update the model
-        content ~= task;
+        parent.children ~= task;
 
         endResetModel();
     }
 
-    private void fetchData() {
+    private void loadData() {
 
         auto count = db.execute("SELECT count(*) FROM Task;").oneValue!uint;
-        content = new Task[count];
+        Task[] content = new Task[count];
 
-        auto results = db.execute("SELECT Id, Description, ParentId FROM Task;");
+        auto results = db.execute("SELECT Id, Description, ParentId FROM Task ORDER BY ParentId, Description;");
 
+        // store copy in local array first
         int i = 0;
         foreach (Row row; results) {
             writeln("Adding task");
+            // store in 
 
-            content[i] = new Task(row["Id"].as!uint, row["Description"].as!string, row["ParentId"].as!(
+            Task task = new Task(row["Id"].as!uint, row["Description"].as!string, row["ParentId"].as!(
                     Nullable!uint));
+            content[i] = task;
+
+            if (task.parentId.isNull) {
+                roots ~= task;
+            }
+
             i++;
         }
-    }
 
-    Task at(ulong index) {
-        return content[index];
+        void buildTree(Task node) {
+            node.children = content
+                .filter!(e => e.parentId == node.id)
+                .map!((e){
+                    e.parent = node;
+                    buildTree(e);
+                    return e;
+                })
+                .array;
+    
+            // FIXME: dependency issue with accessing worklog model data
+            uint count = db.execute("SELECT SUM(Minutes) FROM WorkLog WHERE taskId = :taskId;", node.id).oneValue!uint;
+
+            node.minutes = count + node.children.fold!((uint a,Task b) => a + b.minutes)(0);
+        }
+
+        roots.each!buildTree;
     }
 
     extern (C++) override int columnCount(ref const(QModelIndex) parent = globalInitVar!QModelIndex) const {
-        return 1;
+        return 2;
     }
 
-    // return the number of rows for the parent
+    // return the number of children that the parent has
     extern (C++) override int rowCount(ref const(QModelIndex) parent = globalInitVar!QModelIndex) const {
 
         if (!parent.isValid())
-            return content.count!(e => e.parentId.isNull)
-                .to!int;
+            return roots.length.to!int;
 
-        const(Task) parentItem = content.find!(e => e.id == parent.internalId)[0];
+        // Check if this item has children
+        if (parent.internalPointer is null)
+            return 0;
 
-        int rc = content.count!(e => e.parentId == parentItem.id)
-            .to!int;
-        // writeln("Getting row count for parent: ", parent.row(), ": ", rc);
-        return rc;
+        // else
+        return (cast(Task) parent.internalPointer).children.length.to!int;
     }
 
     extern (C++) override QVariant data(ref const(QModelIndex) index, int role = qt
@@ -116,7 +147,16 @@ public:
         if (role != qt.core.namespace.ItemDataRole.DisplayRole)
             return QVariant();
 
-        return QVariant(QString(content.find!(e => e.id == index.internalId)[0].description));
+        Task task = cast(Task) index.internalPointer;
+
+        switch (index.column()) {
+            case 0:
+                return QVariant(QString(task.description));
+            case 1:
+                return QVariant(QString(task.minutes.to!string));
+            default:
+                return QVariant(QString("NOT IMPLEMENTED"));
+        }
     }
 
     extern (C++) override qt.core.namespace.ItemFlags flags(ref const(QModelIndex) index) const {
@@ -145,26 +185,15 @@ public:
         if (!hasIndex(row, column, parent))
             return QModelIndex();
 
-        // writeln("Creating index for row: ", row);
-
-        import std.range;
-
-        if (parent.isValid()) {
-            // first get the parent item
-            const(Task) parentItem = content.find!(e => e.id == parent.internalId)[0];
-            // get the child items
-            // does this the parent have a child at this row?
-            auto childItems = content.filter!(e => e.parentId == parentItem.id);
-            if (row < childItems.count) {
-                return createIndex(row, column, childItems.drop(row).front().id);
-            }
-        }
-        else {
-            return createIndex(row, column, content.filter!(e => e.parentId.isNull)
-                    .drop(row).front().id);
+        if (!parent.isValid()) {
+            // This is a root item
+            return createIndex(row, column, cast(void*)roots[row]);
         }
 
-        return QModelIndex();
+        Task task = cast(Task) parent.internalPointer;
+
+        return createIndex(row, column, cast(void*)task.children[row]);
+
     }
 
     extern (C++) override QModelIndex parent(ref const(QModelIndex) index) const {
@@ -172,31 +201,15 @@ public:
         if (!index.isValid())
             return QModelIndex();
 
-        // writeln("Finding parent for id: ", index.internalId);
+        Task task = cast(Task)index.internalPointer;
 
-        // find the child item
-        const(Task) childItem = content.find!(e => e.id == index.internalId)[0];
-
-        // The child is a top level item
-        if (childItem.parentId.isNull)
+        if (task.parent is null)
             return QModelIndex();
 
-        // Get the parent item for this child
-        const(Task) parentItem = content.find!(e => e.id == childItem.parentId)[0];
+        // find the position of this item in the children list of the parent task
+        int row = task.parent.children.countUntil!(e => e.id == task.id).to!int;
 
-        // get the row number of the parent in its parent
-        if (parentItem.parentId.isNull) {
-            auto items = content.filter!(e => e.parentId.isNull);
-            return createIndex(items.countUntil!(e => e.id == parentItem.id)
-                    .to!int, 0, parentItem.id);
-        }
-        else {
-            int itemNo = content.filter!(e => e.id == childItem.parentId)
-                .countUntil!(e => e.id == parentItem.id)
-                .to!int;
-            return createIndex(itemNo, 0, parentItem.id);
-        }
-
+        return createIndex(row, 0, cast(void*)task.parent);
     }
 
     extern (C++) override QVariant headerData(int section, qt.core.namespace.Orientation orientation, int role) const {
@@ -204,6 +217,8 @@ public:
             .core.namespace.ItemDataRole.DisplayRole) {
             if (section == 0)
                 return QVariant(QString("Name"));
+            if (section == 1)
+                return QVariant(QString("Minutes"));
         }
 
         // if (orientation == qt.core.namespace.Orientation.Vertical && role == qt.core.namespace.ItemDataRole.DisplayRole)
@@ -215,6 +230,6 @@ public:
     }
 
 private:
-    Task[] content;
+    Task[] roots;
     Database db;
 }

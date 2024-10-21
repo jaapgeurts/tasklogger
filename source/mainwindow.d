@@ -92,14 +92,17 @@ class MainWindow : QMainWindow {
     // Task methods
     //////////
     @QSlot public void onCurrentTaskChanged(ref const(QModelIndex) current, ref const(QModelIndex) previous) {
-        taskId = current.internalId.to!uint;
-        workLogModel.setTask(taskId);
+        currentTask = cast(Task)current.internalPointer;
+        writeln("Selected task: ", currentTask.id , ", ", currentTask.description);
+        workLogModel.setTask(currentTask.id);
     }
 
     @QSlot public void onTaskContextMenuRequested(ref const QPoint pos) {
         writeln("Context menu tasks requested");
-        index = ui.taskTreeView.indexAt(pos);
+        QModelIndex index = ui.taskTreeView.indexAt(pos);
         if (index.isValid()) {
+            // FIXME: dependency issue with accessing internalPointer
+            currentTask = cast(Task)index.internalPointer;
             taskContextMenu.exec(ui.taskTreeView.mapToGlobal(pos));
         }
     }
@@ -111,7 +114,7 @@ class MainWindow : QMainWindow {
         dialog.setTaskItem(taskItem);
         dialog.exec();
         if (dialog.result() == QDialog.DialogCode.Accepted) {
-            taskModel.addTask(taskItem, taskId);
+            taskModel.addTask(currentTask, taskItem);
         }
     }
 
@@ -119,26 +122,25 @@ class MainWindow : QMainWindow {
     //// Work Log methods
     //////////////
 
-    // TODO: change to local variable
-    QModelIndex index;
 
     @QSlot public void onWorkLogContextMenuRequested(ref const QPoint pos) {
         writeln("Context menu worklog requested");
         // index = ui.workLogTableView.currentIndex; // alternative
-        index = ui.workLogTableView.indexAt(pos);
+        QModelIndex index = ui.workLogTableView.indexAt(pos);
         if (index.isValid()) {
+            // FIXME: dependency issue with accessing internalPointer
+            currentWorkLog = cast(WorkLog)index.internalPointer;
             workLogContextMenu.exec(ui.workLogTableView.mapToGlobal(pos));
         }
     }
 
     @QSlot public void onEditWorkLogClicked() {
         writeln("Edit");
-        WorkLog workLog = workLogModel.at(index.row);
         auto dialog = new EditWorkLogDialog(this);
-        dialog.setWorkLogItem(workLog);
+        dialog.setWorkLogItem(currentWorkLog);
         dialog.exec();
         if (dialog.result() == QDialog.DialogCode.Accepted) {
-            workLogModel.updateWorkLog(workLog);
+            workLogModel.updateWorkLog(currentWorkLog);
         }
     }
 
@@ -148,14 +150,14 @@ class MainWindow : QMainWindow {
         dialog.setWorkLogItem(workLog);
         dialog.exec();
         if (dialog.result() == QDialog.DialogCode.Accepted) {
-            workLogModel.addWorkLog(workLog, taskId);
+            workLogModel.addWorkLog(workLog, currentTask.id);
         }
     }
 
     @QSlot public void onDeleteWorkLogClicked() {
         writeln("Delete");
-        WorkLog workLog = workLogModel.at(index.row);
-        workLogModel.deleteWorkLog(workLog);
+        workLogModel.deleteWorkLog(currentWorkLog);
+        currentWorkLog = null;
     }
 
 private:
@@ -170,5 +172,8 @@ private:
     uint taskId;
 
     Database db;
+
+    Task currentTask;
+    WorkLog currentWorkLog;
 
 }

@@ -43,7 +43,7 @@ class EditWorkLogDialog : QDialog {
     }
 
     void setWorkLogItem(WorkLog item) {
-        workLogItem = item;
+        workLogItem = item; 
         ui.leTitle.setText(QString(item.title));
         ui.spMinutes.setValue(item.minutes);
         ui.dteStartDate.setDateTime(QDateTime.fromString(QString(item.date), QString("yyyy-MM-dd hh:mm:ss.zzz")));
