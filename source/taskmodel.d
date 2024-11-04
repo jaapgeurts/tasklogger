@@ -15,6 +15,7 @@ import qt.core.variant;
 
 import d2sqlite3;
 
+import common;
 import worklogmodel;
 
 class Task {
@@ -153,7 +154,7 @@ public:
             case 0:
                 return QVariant(QString(task.description));
             case 1:
-                return QVariant(QString(task.minutes.to!string));
+                return QVariant(QString(task.minutes.toHoursMinutes));
             default:
                 return QVariant(QString("NOT IMPLEMENTED"));
         }
@@ -218,7 +219,7 @@ public:
             if (section == 0)
                 return QVariant(QString("Name"));
             if (section == 1)
-                return QVariant(QString("Minutes"));
+                return QVariant(QString("Hours"));
         }
 
         // if (orientation == qt.core.namespace.Orientation.Vertical && role == qt.core.namespace.ItemDataRole.DisplayRole)

@@ -15,7 +15,7 @@ import qt.core.variant;
 
 import d2sqlite3;
 
-
+import common;
 
 class WorkLog {
 
@@ -153,11 +153,7 @@ class WorkLogModel : QAbstractItemModel {
                 return QVariant(QString(content[index.row()].title));
             case 1:
                 int minutes = content[index.row()].minutes;
-                // TODO: convert minutes to days, hours and minutes and return as string
-                // int days = minutes / (24 * 60);
-                int hours = minutes / 60;
-                minutes = minutes % 60;
-                return QVariant(QString(format("%d:%02d", hours, minutes)));
+                return QVariant(QString(minutes.toHoursMinutes));
             case 2:
                 return QVariant(QString(content[index.row()].date));
         }
@@ -185,8 +181,9 @@ class WorkLogModel : QAbstractItemModel {
     }
 
     extern (C++) override QModelIndex index(int row, int column, ref const(QModelIndex) parent = globalInitVar!QModelIndex) const {
-        if (parent.isValid())
-            return QModelIndex();
+        
+        // if (!parent.isValid())
+        //     return QModelIndex();
 
         return createIndex(row, column, cast(void*)content[row]);
     }

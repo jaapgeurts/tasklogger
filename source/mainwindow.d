@@ -20,6 +20,7 @@ import qt.widgets.menu;
 import qt.widgets.action;
 
 import qt.gui.font;
+import qt.gui.icon;
 
 import qt.core.abstractitemmodel;
 
@@ -39,6 +40,8 @@ class MainWindow : QMainWindow {
         this.db = db;
 
         super(parent);
+
+        setWindowIcon(QIcon.fromTheme(QString("evolution-tasks")));
 
         this.ui = cpp_new!(typeof(*ui));
 
@@ -67,6 +70,9 @@ class MainWindow : QMainWindow {
         // task model
         taskModel = new TaskModel(db);
         ui.taskTreeView.setModel(taskModel);
+        ui.taskTreeView.setExpanded(taskModel.index(0, 0), true);
+        ui.taskTreeView.setColumnWidth(0, 200);
+
         connect(ui.taskTreeView.signal!("customContextMenuRequested"),
             this.slot!("onTaskContextMenuRequested"));
 
@@ -76,6 +82,8 @@ class MainWindow : QMainWindow {
         // work log model
         workLogModel = new WorkLogModel(db);
         ui.workLogTableView.setModel(workLogModel);
+        ui.workLogTableView.setColumnWidth(0, 200);
+
         connect(ui.workLogTableView.signal!("customContextMenuRequested"),
             this.slot!("onWorkLogContextMenuRequested"));
 
